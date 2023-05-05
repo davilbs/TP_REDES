@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include "common.h"
 
-const char *formats[] = {"txt", "c", "cpp", "py", "tex", "java"};
+const char *formats[] = {".txt", ".c", ".cpp", ".py", ".tex", ".java"};
 
 int checkVersion(const char *address)
 {
@@ -24,13 +24,37 @@ int checkVersion(const char *address)
     return 0;
 }
 
-int checkFormat(const char *format)
+int checkFormat(const char *filename)
 {
+    char* format = strrchr(filename, '.');
+    if (format == NULL) return 0;
+    printf("File format: %s\n", format);
     for (int i = 0; i < 6; i++)
     {
         if (strcmp(format, formats[i]) == 0)
             return 1;
     }
+    return 0;
+}
+
+size_t readFile()
+{
+    char filecontent[BUFFERSIZE];
+    size_t readLen;
+    readLen = fread(filecontent, sizeof(char), BUFFERSIZE - 4 - inputSize, fp);
+    if (ferror(fp) != 0)
+        DieSysError("Error reading file");
+    if (readLen > 0)
+    {
+        printf("[%ld] %s\n", readLen, filecontent);
+        filecontent[readLen++] = '\\';
+        filecontent[readLen + 2] = 'e';
+        filecontent[readLen + 3] = 'n';
+        filecontent[readLen + 4] = 'd';
+    }
+    printf("Read %lu bytes\n", readLen);
+    memset(filecontent, 0, BUFFERSIZE);
+    printf("Reset buffer %s\n", filecontent);
     return 0;
 }
 
@@ -76,35 +100,34 @@ int main(int argc, char *argv[])
     char *input = NULL;
     char *command;
     char *filename = "";
-    char *format = "";
-    int isSend;
+    char msg[BUFFERSIZE];
     size_t inputSize;
-    char filecontent[BUFFERSIZE];
     FILE *fp;
     printf("Input loop\n");
     for (;;)
     {
-        isSend = 0;
-        while (!isSend)
+        for (;;)
         {
-            printf("Reading input\n");
             if (getline(&input, &inputSize, stdin) < 0)
                 exit(1);
+
             command = strtok(input, " \n");
             if (memcmp(command, "exit", sizeof("exit")) == 0)
             {
                 // Close connection
                 size_t strLen = strlen("exit\\end");
                 ssize_t numBytes = send(sock, "exit\\end", strLen, 0);
+
                 if (numBytes < 0)
                     DieSysError("Failed to send exit command");
                 else if(numBytes != strLen)
                     DieUsrError("Failed to send", "Sent unexpected number of bytes");
-                printf("Sent successfully %lu bytes\n", numBytes);
-                ssize_t numBytesRcvd = recv(sock, filecontent, BUFFERSIZE, 0);
+                    
+                ssize_t numBytesRcvd = recv(sock, msg, BUFFERSIZE, 0);
                 if(numBytesRcvd < 0)
                     DieSysError("Failed to receive message");
-                printf("%s\n", parseMsg(filecontent));
+
+                printf("%s\n", parseMsg(msg));
                 close(sock);
                 exit(0);
             }
@@ -113,18 +136,14 @@ int main(int argc, char *argv[])
                 // Get filename
                 strtok(NULL, " \n");
                 filename = strtok(NULL, " \n");
-                fp = fopen(filename, "r");
-                strtok(filename, ".");
-                format = strtok(NULL, ".");
-                // strcpy(format, filename);
-                if (fp == NULL)
+                if (access(filename, F_OK) != 0)
                 {
-                    printf("%s.%s does not exist\n", filename, format);
+                    printf("%s does not exist\n", filename);
                     filename = "";
                 }
-                else if (checkFormat(format) == 0)
+                else if (checkFormat(filename) == 0)
                 {
-                    printf("%s.%s not valid!\n", filename, format);
+                    printf("%s not valid!\n", filename);
                     filename = "";
                 }
             }
@@ -133,28 +152,13 @@ int main(int argc, char *argv[])
                 if (filename == "")
                     printf("no file selected!\n");
                 else
-                    isSend = 1;
+                    break;
             }
         }
 
-        printf("%s selected\n", filename);
-        size_t readLen;
-        inputSize = strlen(filename);
-        do
-        {
-            readLen = fread(filecontent, sizeof(char), BUFFERSIZE - 4 - inputSize, fp);
-            if (ferror(fp) != 0)
-                DieSysError("Error reading file");
-            if (readLen > 0)
-            {
-                printf("[%ld] %s\n", readLen, filecontent);
-                filecontent[readLen++] = '\\';
-                filecontent[readLen + 2] = 'e';
-                filecontent[readLen + 3] = 'n';
-                filecontent[readLen + 4] = 'd';
-            }
-            printf("Read %lu bytes\n", readLen);
-        } while (readLen == (BUFFERSIZE - 4 - inputSize));
+        fp = fopen(filename, "r");
+        msg = 
+        while ( > 0);
         fclose(fp);
         printf("Finished reading file\n");
     }

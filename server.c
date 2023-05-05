@@ -1,46 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include "common.h"
+#include "serverutils.h"
 
 #define MAXPENDING 5
-
-void handleClient(int clntSocket)
-{
-    char buffer[BUFFERSIZE];
-    char header[BUFFERSIZE];
-    ssize_t numBytesRcvd = recv(clntSocket, buffer, BUFFERSIZE, 0);
-    if(numBytesRcvd < 0)
-        DieSysError("Failed to receive message");
-    
-    while(numBytesRcvd > 0)
-    {
-        int pos = 0;
-        for(;;pos++)
-        {
-            if(buffer[pos] == '\\' && buffer[pos+1] == 'e' && buffer[pos+2] == 'n' && buffer[pos+3] == 'd')
-                break;
-        }
-
-        strncat(header, buffer, pos);
-        printf("Pos %d - %s\n", pos, header);
-        if (memcmp(header, "exit", sizeof("exit")) == 0)
-        {
-            size_t strLen = strlen("connection closed\\end");
-            ssize_t numBytes = send(clntSocket, "connection closed\\end", strLen, 0);
-            break;
-        }
-
-        ssize_t numBytesRcvd = recv(clntSocket, buffer, BUFFERSIZE, 0);
-        if(numBytesRcvd < 0)
-            DieSysError("Failed to receive message");
-    }
-    close(clntSocket);
-}
 
 int main(int argc, char *argv[])
 {
