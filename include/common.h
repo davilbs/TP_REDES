@@ -1,5 +1,10 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #define BUFFERSIZE 500
 
@@ -18,23 +23,24 @@ void DieUsrError(const char* msg, const char* detail)
     exit(1);
 }
 
+// Checks for end of header/message
 int checkEnd(const char* msg, int pos)
 {
     return (msg[pos] == '\\' && msg[pos+1] == 'e' && msg[pos+2] == 'n' && msg[pos+3] == 'd');
 }
 
-// Reads the message from the buffer and splits at the \end
-char* parseMsg(const char* msg)
+// Reads the message from the buffer gets the content after the header
+char* parseMsg(const char* msg, int start)
 {
-    char *content;
-    int pos = 0;
+    int pos = start;
     for(;;pos++)
     {
         if(checkEnd(msg, pos))
             break;
     }
-    content = malloc(sizeof(char)*(pos + 1));
-    strncat(content, msg, pos);
+    char *content = (char *)malloc(pos + 1 - start);
+    strncpy(content, (char *)msg + start, (pos - start));
     strcat(content, "\0");
+    printf("Content parsed from %d to %d msg [%s]\n", start, pos, content);
     return content;
 }
