@@ -1,4 +1,5 @@
 #include "../include/serverutils.h"
+#include <sys/stat.h>
 
 int main(int argc, char *argv[])
 {
@@ -49,6 +50,7 @@ int main(int argc, char *argv[])
         DieSysError("Failed to listen on port");
 
     // Main server loop
+    umask(0);
     if (strcmp(version, "v4") == 0)
     {
         for (;;)
