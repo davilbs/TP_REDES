@@ -3,4 +3,5 @@ build:
 	gcc -o server/server server/server.c
 clean:
 	rm client/client
-	rm client/server
+	rm server/server
+	rm server/*.txt

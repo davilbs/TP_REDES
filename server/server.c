@@ -54,12 +54,11 @@ int main(int argc, char *argv[])
 
         char clntName[INET_ADDRSTRLEN];
         if (inet_ntop(af, &clntAddr.sin_addr.s_addr, clntName, sizeof(clntName)) != NULL)
-        {
-            printf("Handling client %s/%d\n", clntName, ntohs(clntAddr.sin_port));
             handleClient(clntSock);
-            puts("Finished handling client");
-        }
         else
             puts("Unable to get client address");
     }
+
+    close(servSock);
+    exit(0);
 }

@@ -55,6 +55,7 @@ int checkFile(const char *filename)
 void sendExit(int sock)
 {
     char msg[BUFFERSIZE];
+    memset(msg, 0, BUFFERSIZE);
     size_t strLen = strlen("exit\\end");
     ssize_t numBytes = send(sock, "exit\\end", strLen, 0);
 
@@ -72,6 +73,23 @@ void sendExit(int sock)
 
     printf("%s\n", parseMsg(msg, 0));
     close(sock);
+}
+
+// Checks for end of transmission
+int checkTransmission(const char* servMsg)
+{
+    for (int pos = 0;;pos++){
+        if(checkEnd(servMsg, pos))
+            break;
+        else if(pos >= strlen(servMsg))
+            DieSysError("Malformed server response");
+    }
+
+    if(strcmp(servMsg, "received\\end") != 0){
+        puts(parseMsg(servMsg, 0));
+    }
+    
+    return 1;
 }
 
 // Reads the content in the open file and sends the chunks 
@@ -92,16 +110,23 @@ size_t sendFile(FILE *fp, char *header, int sock)
     strcat(msg, "\\end");
     strcat(msg, filecontent);
     strcat(msg, "\\end");
-    printf("Sending message [%s]\n", msg);
     size_t strLen = strlen(msg);
     ssize_t numBytes = send(sock, msg, strLen, 0);
+
+    memset(msg, 0, BUFFERSIZE);
+    do{
+        numBytes = recv(sock, msg, BUFFERSIZE, 0);
+        if (numBytes < 0)
+            DieSysError("Failed to receive message");
+    } while(!checkTransmission(msg));
+
     return readLen;
 }
 
 // Reads the commands from the command line prompts
 char* cmdParse(int sock)
 {
-    char *command, *input, *filename = NULL;
+    char *command = NULL, *input = NULL, *filename = NULL;
     size_t inputSize;
     for (;;)
     {
@@ -116,23 +141,23 @@ char* cmdParse(int sock)
         }
         else if (memcmp(command, "select", sizeof("select")) == 0)
         {
-            // Get filename
             strtok(NULL, " \n");
             command = strtok(NULL, " \n");
-            if (!checkFile(command)) filename = NULL;
+            if (!checkFile(command)) memset(filename, 0, strlen(filename));
             else {
                 filename = (char*)malloc(strlen(command) + 1);
-                memcpy(filename, command, strlen(command));
-                filename[strlen(command) + 1] = '\0';
+                strcpy(filename, command);
+                filename[strlen(command)] = '\0';
             }
         }
         else if (memcmp(command, "send", sizeof("send")) == 0)
         {
-            if (filename != NULL){
+            if (filename != NULL)
                 return filename;
-            }
             else
                 printf("no file selected!\n");
         }
+        memset(input, 0, strlen(input));
+        memset(command, 0, strlen(command));
     }
 }

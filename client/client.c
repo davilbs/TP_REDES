@@ -39,11 +39,11 @@ int main(int argc, char *argv[])
     for (;;)
     {
         filename = cmdParse(sock);
-        printf("Sending file %s\n", filename);
+
         fp = fopen(filename, "r");
         while (sendFile(fp, filename, sock) > 0);
         fclose(fp);
-        filename = NULL;
-        printf("Finished reading file\n");
+
+        memset(filename, 0, strlen(filename));
     }
 }

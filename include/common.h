@@ -38,9 +38,8 @@ char* parseMsg(const char* msg, int start)
         if(checkEnd(msg, pos))
             break;
     }
-    char *content = (char *)malloc(pos + 1 - start);
-    strncpy(content, (char *)msg + start, (pos - start));
-    strcat(content, "\0");
-    printf("Content parsed from %d to %d msg [%s]\n", start, pos, content);
+    char *content = (char *) malloc(pos + 1 - start);
+    strncpy(content, msg + start, (pos - start));
+    content[pos - start] = '\0';
     return content;
 }
