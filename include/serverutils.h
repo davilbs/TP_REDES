@@ -17,7 +17,6 @@ int processText(FILE *fp, const char *filename, const char *content, int clntSoc
 {
     if (strlen(content) == 0)
     {
-        printf("File status: %d\n", isFile);
         fclose(fp);
         char serverMsg[BUFFERSIZE];
         memset(serverMsg, 0, BUFFERSIZE);
@@ -26,7 +25,6 @@ int processText(FILE *fp, const char *filename, const char *content, int clntSoc
         strcat(serverMsg, (isFile == 1) ? " received\\end" : " overwritten\\end");
         size_t strLen = strlen(serverMsg);
         ssize_t numBytes = send(clntSocket, serverMsg, strLen, 0);
-        puts("Finished writing");
         return 0;
     } 
     size_t strLen = strlen("received\\end");
@@ -69,7 +67,6 @@ void handleClient(int clntSocket)
             strcpy(filename, header);
             isFile = (access(filename, F_OK) != -1) ? 2 : 1;
             fp = fopen(filename, "w");
-            printf("Setting file status: %d\n", isFile);
         }
         isFile = processText(fp, filename, content, clntSocket, isFile);
 

@@ -35,20 +35,18 @@ int checkFormat(const char *filename)
 // Checks if the file can be sent
 int checkFile(const char *filename)
 {
-    int ok = 1;
     if (access(filename, F_OK) != 0)
     {
         printf("%s does not exist\n", filename);
-        ok = 0;
+        return 0;
     }
     else if (checkFormat(filename) == 0)
     {
         printf("%s not valid!\n", filename);
-        ok = 0;
-    }else {
-        printf("%s selected\n", filename);
+        return 0;
     }
-    return ok;
+    printf("%s selected\n", filename);
+    return 1;
 }
 
 // Closes the connection with the server
@@ -65,47 +63,49 @@ void sendExit(int sock)
         DieUsrError("Failed to send", "Sent unexpected number of bytes");
 
     ssize_t numBytesRcvd;
-    do{
+    do
+    {
         numBytesRcvd = recv(sock, msg, BUFFERSIZE, 0);
         if (numBytesRcvd < 0)
             DieSysError("Failed to receive message");
-    } while(numBytesRcvd > 0);
+    } while (numBytesRcvd > 0);
 
     printf("%s\n", parseMsg(msg, 0));
     close(sock);
 }
 
 // Checks for end of transmission
-int checkTransmission(const char* servMsg)
+int checkTransmission(const char *servMsg)
 {
-    for (int pos = 0;;pos++){
-        if(checkEnd(servMsg, pos))
+    for (int pos = 0;; pos++)
+    {
+        if (checkEnd(servMsg, pos))
             break;
-        else if(pos >= strlen(servMsg))
+        else if (pos >= strlen(servMsg))
             DieSysError("Malformed server response");
     }
 
-    if(strcmp(servMsg, "received\\end") != 0){
+    if (strcmp(parseMsg(servMsg, 0), "received") != 0)
+    {
         puts(parseMsg(servMsg, 0));
     }
-    
+
     return 1;
 }
 
-// Reads the content in the open file and sends the chunks 
+// Reads the content in the open file and sends the chunks
 // of data to the server
 size_t sendFile(FILE *fp, char *header, int sock)
 {
     size_t headerLen = strlen(header);
     size_t readLen;
     size_t maxRead = BUFFERSIZE - 8 - headerLen;
-    char *filecontent = (char *) malloc(maxRead);
+    char *filecontent = (char *) calloc(maxRead, sizeof(char));
     readLen = fread(filecontent, sizeof(char), maxRead, fp);
     if (ferror(fp) != 0)
         DieSysError("Error reading file");
 
-    char msg[BUFFERSIZE];
-    memset(msg, 0, BUFFERSIZE);
+    char *msg = (char *) calloc(headerLen + readLen + 8, sizeof(char));
     strcat(msg, header);
     strcat(msg, "\\end");
     strcat(msg, filecontent);
@@ -113,25 +113,33 @@ size_t sendFile(FILE *fp, char *header, int sock)
     size_t strLen = strlen(msg);
     ssize_t numBytes = send(sock, msg, strLen, 0);
 
-    memset(msg, 0, BUFFERSIZE);
-    do{
-        numBytes = recv(sock, msg, BUFFERSIZE, 0);
+    char ans[BUFFERSIZE];
+    do
+    {
+        numBytes = recv(sock, ans, BUFFERSIZE, 0);
         if (numBytes < 0)
-            DieSysError("Failed to receive message");
-    } while(!checkTransmission(msg));
+        {
+            puts("Failed to receive message");
+            readLen = 0;
+            break;
+        }
+    } while (!checkTransmission(ans));
 
     return readLen;
 }
 
 // Reads the commands from the command line prompts
-char* cmdParse(int sock)
+char *cmdParse(int sock)
 {
     char *command = NULL, *input = NULL, *filename = NULL;
-    size_t inputSize;
+    size_t inputSize = 0;
     for (;;)
     {
         if (getline(&input, &inputSize, stdin) < 0)
             exit(1);
+
+        if (inputSize < 4)
+            continue;
 
         command = strtok(input, " \n");
         if (memcmp(command, "exit", sizeof("exit")) == 0)
@@ -143,11 +151,10 @@ char* cmdParse(int sock)
         {
             strtok(NULL, " \n");
             command = strtok(NULL, " \n");
-            if (!checkFile(command)) memset(filename, 0, strlen(filename));
-            else {
-                filename = (char*)malloc(strlen(command) + 1);
+            if(checkFile(command))
+            {
+                filename = (char *)calloc(strlen(command) + 1, sizeof(char));
                 strcpy(filename, command);
-                filename[strlen(command)] = '\0';
             }
         }
         else if (memcmp(command, "send", sizeof("send")) == 0)
@@ -157,6 +164,7 @@ char* cmdParse(int sock)
             else
                 printf("no file selected!\n");
         }
+
         memset(input, 0, strlen(input));
         memset(command, 0, strlen(command));
     }
